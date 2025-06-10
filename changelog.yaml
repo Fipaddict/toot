@@ -1,3 +1,49 @@
+0.48.1:
+  date: 2025-03-06
+  changes:
+    - "TUI: Add workaround for issue with snac2 instances (#523)"
+
+0.48.0:
+  date: 2025-03-06
+  description: |
+    This release adds a new set of commands for working with timelines under
+    `toot timelines` (note the plural). These will replace `toot timeline`
+    which is now marked as deprecated. The reason for this change is that
+    various timelines require different options and having separate commands
+    makes them easier to implement and use.
+
+    New timeline commands include new paging logic which will print as many
+    statuses as can fit on your screen at once, and clear the screen before
+    printing the next batch. See help for `--pager` and `--clear` options.
+  changes:
+    - "BREAKING: Remove deprecated commands: `tags_followed`, `tags_follow`, and `tags tags_unfollow`. Use `tags followed`, `tags follow`, and `tags tags unfollow` instead."
+    - "BREAKING: Remove deprecated `lists` command for listing lists in favour of `lists list`"
+    - "Add `toot timelines` commands  and mark `toot timeline` as deprecated"
+    - "Improve datetime parsing, improves compatibility with snac2 (#523)"
+    - "TUI: Fix urwid deprecations (thanks Aleksei Stepanov)"
+
+0.47.1:
+  date: 2024-11-27
+  changes:
+    - "Fix last post ID not being stored when using --json, which broke --reply-last"
+    - "Don't set default post visibility to public, let the server decide instead"
+
+0.47.0:
+  date: 2024-11-14
+  changes:
+    - "Add `toot tui --show-display-names` option to show display names instead of account names (#501)"
+    - "Add missing descriptions for notification types (#502)"
+    - "Fix bug in paging timelines where limit parameter was sent twice (#505)"
+    - "TUI: Fix exception when loading followed accounts when server does not support it (#504)"
+
+0.46.0:
+  date: 2024-11-14
+  changes:
+    - "Add `--limit` and `--offset` options to `search` command (thanks @Oblomov)"
+    - "Add `--min-id` and `--max-id` options to `search` command"
+    - "Add `--type` and `--exclude-type` options to `notifications` command"
+    - "Fix bug when identifying lists by their ID"
+
 0.45.0:
   date: 2024-09-29
   changes:

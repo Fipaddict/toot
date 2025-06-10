@@ -1,30 +1,18 @@
-import click
 import json as pyjson
+from typing import Optional
 
-from toot import api, config
-from toot.cli import Context, cli, pass_context, json_option
-from toot.entities import from_dict_list, List
+import click
+
+from toot import api
+from toot.cli import Context, cli, json_option, pass_context
+from toot.entities import List, from_dict_list
 from toot.output import print_list_accounts, print_lists, print_warning
 
 
-@cli.group(invoke_without_command=True)
-@click.pass_context
-def lists(ctx: click.Context):
-    """Display and manage lists"""
-    if ctx.invoked_subcommand is None:
-        print_warning("`toot lists` is deprecated in favour of `toot lists list`.\n" +
-                      "Run `toot lists -h` to see other list-related commands.")
-
-        user, app = config.get_active_user_app()
-        if not user or not app:
-            raise click.ClickException("This command requires you to be logged in.")
-
-        data = api.get_lists(app, user)
-        lists = from_dict_list(List, data)
-        if lists:
-            print_lists(lists)
-        else:
-            click.echo("You have no lists defined.")
+@cli.group()
+def lists():
+    """Show and manage your lists"""
+    pass
 
 
 @lists.command()
@@ -49,9 +37,9 @@ def list(ctx: Context, json: bool):
 @click.option("--id", help="List ID if not title is given")
 @json_option
 @pass_context
-def accounts(ctx: Context, title: str, id: str, json: bool):
+def accounts(ctx: Context, title: str, id: Optional[str], json: bool):
     """List the accounts in a list"""
-    list_id = _get_list_id(ctx, title, id)
+    list_id = get_list_id(ctx, title, id)
     response = api.get_list_accounts(ctx.app, ctx.user, list_id)
 
     if json:
@@ -84,9 +72,9 @@ def create(ctx: Context, title: str, replies_policy: str, json: bool):
 @click.option("--id", help="List ID if not title is given")
 @json_option
 @pass_context
-def delete(ctx: Context, title: str, id: str, json: bool):
+def delete(ctx: Context, title: str, id: Optional[str], json: bool):
     """Delete a list"""
-    list_id = _get_list_id(ctx, title, id)
+    list_id = get_list_id(ctx, title, id)
     response = api.delete_list(ctx.app, ctx.user, list_id)
     if json:
         click.echo(response.text)
@@ -100,9 +88,9 @@ def delete(ctx: Context, title: str, id: str, json: bool):
 @click.option("--id", help="List ID if not title is given")
 @json_option
 @pass_context
-def add(ctx: Context, title: str, account: str, id: str, json: bool):
+def add(ctx: Context, title: str, account: str, id: Optional[str], json: bool):
     """Add an account to a list"""
-    list_id = _get_list_id(ctx, title, id)
+    list_id = get_list_id(ctx, title, id)
     found_account = api.find_account(ctx.app, ctx.user, account)
 
     try:
@@ -133,9 +121,9 @@ def add(ctx: Context, title: str, account: str, id: str, json: bool):
 @click.option("--id", help="List ID if not title is given")
 @json_option
 @pass_context
-def remove(ctx: Context, title: str, account: str, id: str, json: bool):
+def remove(ctx: Context, title: str, account: str, id: Optional[str], json: bool):
     """Remove an account from a list"""
-    list_id = _get_list_id(ctx, title, id)
+    list_id = get_list_id(ctx, title, id)
     found_account = api.find_account(ctx.app, ctx.user, account)
     response = api.remove_accounts_from_list(ctx.app, ctx.user, list_id, [found_account["id"]])
     if json:
@@ -151,10 +139,10 @@ def remove(ctx: Context, title: str, account: str, id: str, json: bool):
 @click.argument("title", required=False)
 @click.option("--id", help="List ID if not title is given")
 @pass_context
-def list_accounts(ctx: Context, title: str, id: str):
+def list_accounts(ctx: Context, title: str, id: Optional[str]):
     """List the accounts in a list"""
     print_warning("`toot list_accounts` is deprecated in favour of `toot lists accounts`")
-    list_id = _get_list_id(ctx, title, id)
+    list_id = get_list_id(ctx, title, id)
     response = api.get_list_accounts(ctx.app, ctx.user, list_id)
     print_list_accounts(response)
 
@@ -179,10 +167,10 @@ def list_create(ctx: Context, title: str, replies_policy: str):
 @click.argument("title", required=False)
 @click.option("--id", help="List ID if not title is given")
 @pass_context
-def list_delete(ctx: Context, title: str, id: str):
+def list_delete(ctx: Context, title: str, id: Optional[str]):
     """Delete a list"""
     print_warning("`toot list_delete` is deprecated in favour of `toot lists delete`")
-    list_id = _get_list_id(ctx, title, id)
+    list_id = get_list_id(ctx, title, id)
     api.delete_list(ctx.app, ctx.user, list_id)
     click.secho(f"✓ List \"{title if title else id}\" deleted.", fg="green")
 
@@ -192,10 +180,10 @@ def list_delete(ctx: Context, title: str, id: str):
 @click.argument("account")
 @click.option("--id", help="List ID if not title is given")
 @pass_context
-def list_add(ctx: Context, title: str, account: str, id: str):
+def list_add(ctx: Context, title: str, account: str, id: Optional[str]):
     """Add an account to a list"""
     print_warning("`toot list_add` is deprecated in favour of `toot lists add`")
-    list_id = _get_list_id(ctx, title, id)
+    list_id = get_list_id(ctx, title, id)
     found_account = api.find_account(ctx.app, ctx.user, account)
 
     try:
@@ -222,24 +210,21 @@ def list_add(ctx: Context, title: str, account: str, id: str):
 @click.argument("account")
 @click.option("--id", help="List ID if not title is given")
 @pass_context
-def list_remove(ctx: Context, title: str, account: str, id: str):
+def list_remove(ctx: Context, title: Optional[str], account: str, id: Optional[str]):
     """Remove an account from a list"""
     print_warning("`toot list_remove` is deprecated in favour of `toot lists remove`")
-    list_id = _get_list_id(ctx, title, id)
+    list_id = get_list_id(ctx, title, id)
     found_account = api.find_account(ctx.app, ctx.user, account)
     api.remove_accounts_from_list(ctx.app, ctx.user, list_id, [found_account["id"]])
     click.secho(f"✓ Removed account \"{account}\"", fg="green")
 
 
-def _get_list_id(ctx: Context, title, list_id):
+def get_list_id(ctx: Context, title: Optional[str], list_id: Optional[str]):
     if not list_id and not title:
         raise click.ClickException("Please specify list title or ID")
 
     lists = api.get_lists(ctx.app, ctx.user)
-    matched_ids = [
-        list["id"] for list in lists
-        if list["title"].lower() == title.lower() or list["id"] == list_id
-    ]
+    matched_ids = [list["id"] for list in lists if _matches(list, title, list_id)]
 
     if not matched_ids:
         raise click.ClickException("List not found")
@@ -248,3 +233,7 @@ def _get_list_id(ctx: Context, title, list_id):
         raise click.ClickException("Found multiple lists with the same title, please specify the ID instead")
 
     return matched_ids[0]
+
+
+def _matches(list, title, list_id):
+    return (title and title.lower() == list["title"].lower()) or (list_id and list_id == list["id"])

@@ -21,12 +21,26 @@ def get_terminal_width() -> int:
     return shutil.get_terminal_size().columns
 
 
+def get_terminal_height() -> int:
+    return shutil.get_terminal_size().lines
+
+
 def get_width() -> int:
     return min(get_terminal_width(), get_max_width())
 
 
 def print_warning(text: str):
     click.secho(f"Warning: {text}", fg="yellow", err=True)
+
+
+def get_continue():
+    click.secho(f"Press {green('Space')} or {green('Enter')} to continue, {yellow('Esc')} or {yellow('q')} to break.")
+    while True:
+        char = click.getchar()
+        if char == ' ' or char == '\r':
+            return True
+        if char == '\x1b' or char == 'q':
+            return False
 
 
 def print_instance(instance: Instance):
@@ -281,7 +295,7 @@ def print_notification(notification: Notification):
         print_status(notification.status)
 
 
-def print_notifications(notifications: t.List[Notification]):
+def print_notifications(notifications: t.Iterable[Notification]):
     for notification in notifications:
         if notification.type not in ["pleroma:emoji_reaction"]:
             print_divider()
@@ -294,14 +308,24 @@ def print_notification_header(notification: Notification):
 
     if notification.type == "follow":
         click.echo(f"{account_name} now follows you")
+    elif notification.type == "follow_request":
+        click.echo(f"{account_name} requested to follow you")
     elif notification.type == "mention":
         click.echo(f"{account_name} mentioned you")
     elif notification.type == "reblog":
-        click.echo(f"{account_name} reblogged your status")
+        click.echo(f"{account_name} boosted your status")
     elif notification.type == "favourite":
         click.echo(f"{account_name} favourited your status")
     elif notification.type == "update":
         click.echo(f"{account_name} edited a post")
+    elif notification.type == "status":
+        click.echo(f"{account_name} posted a status")
+    elif notification.type == "poll":
+        click.echo("A poll you participated in has ended")
+    elif notification.type == "admin.sign_up":
+        click.echo(f"{account_name} has signed up")
+    elif notification.type == "admin.report":
+        click.echo(f"{account_name} filed a report")
     else:
         click.secho(
             f"Unknown notification type: '{notification.type}'", err=True, fg="yellow"

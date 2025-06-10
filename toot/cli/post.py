@@ -44,7 +44,6 @@ from toot.utils.datetime import parse_datetime
     help="Post visibility: " + "; "
       .join("{} = {}".format(visibility, description)
       for visibility, caption, description in VISIBILITY_OPTIONS),
-    default=VISIBILITY_CHOICES[0],
     type=click.Choice(VISIBILITY_CHOICES),
 )
 @click.option(
@@ -184,10 +183,11 @@ def post(
         poll_hide_totals=poll_hide_totals,
     )
 
+    status = response.json()
+
     if json:
         click.echo(response.text)
     else:
-        status = response.json()
         if "scheduled_at" in status:
             scheduled_at = parse_datetime(status["scheduled_at"])
             scheduled_at = datetime.strftime(scheduled_at, "%Y-%m-%d %H:%M:%S%z")
@@ -195,7 +195,7 @@ def post(
         else:
             click.echo(f"Toot posted: {status['url']}")
 
-        save_last_post_id(app, user, status["id"])
+    save_last_post_id(app, user, status["id"])
 
     delete_tmp_status_file()
 

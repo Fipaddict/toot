@@ -75,11 +75,30 @@ def instance(instance: Optional[str], json: bool):
 @cli.command()
 @click.argument("query")
 @click.option("-r", "--resolve", is_flag=True, help="Resolve non-local accounts")
+@click.option(
+    "-t", "--type",
+    type=click.Choice(["accounts", "hashtags", "statuses"]),
+    help="Limit search to one type only"
+)
+@click.option("-o", "--offset", type=int, help="Return results starting from (default 0)")
+@click.option("-l", "--limit", type=int, help="Maximum number of results to return, per type. (default 20, max 40)")
+@click.option("--min-id", help="Return results newer than this ID.")
+@click.option("--max-id", help="Return results older than this ID.")
 @json_option
 @pass_context
-def search(ctx: Context, query: str, resolve: bool, json: bool):
-    """Search for users or hashtags"""
-    response = api.search(ctx.app, ctx.user, query, resolve)
+def search(
+    ctx: Context,
+    query: str,
+    resolve: bool,
+    type: Optional[str],
+    offset: Optional[int],
+    limit: Optional[int],
+    min_id: Optional[str],
+    max_id: Optional[str],
+    json: bool
+):
+    """Search for content in accounts, statuses and hashtags."""
+    response = api.search(ctx.app, ctx.user, query, resolve, type, offset, limit, min_id, max_id)
     if json:
         click.echo(response.text)
     else:

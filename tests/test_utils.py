@@ -1,13 +1,15 @@
+from datetime import datetime
 import click
 import pytest
 import sys
 
 from toot.cli.validators import validate_duration
+from toot.utils.datetime import parse_datetime
 from toot.wcstring import wc_wrap, trunc, pad, fit_text
 from toot.tui.utils import LRUCache
 from PIL import Image
 from collections import namedtuple
-from toot.utils import urlencode_url
+from toot.utils import batched, urlencode_url
 
 
 def test_pad():
@@ -319,3 +321,49 @@ def test_urlencode_url():
     assert urlencode_url("https://www.example.com") == "https://www.example.com"
     assert urlencode_url("https://www.example.com/url%20with%20spaces") == "https://www.example.com/url%20with%20spaces"
 
+
+def test_batched():
+    assert list(batched("", 2)) == []
+    assert list(batched("a", 2)) == [["a"]]
+    assert list(batched("ab", 2)) == [["a", "b"]]
+    assert list(batched("abc", 2)) == [["a", "b"], ["c"]]
+    assert list(batched("abcd", 2)) == [["a", "b"], ["c", "d"]]
+    assert list(batched("abcde", 2)) == [["a", "b"], ["c", "d"], ["e"]]
+    assert list(batched("abcdef", 2)) == [["a", "b"], ["c", "d"], ["e", "f"]]
+
+    with pytest.raises(ValueError):
+        list(batched("foo", 0))
+
+
+def test_parse_datetime():
+    # mastodon uses this format
+    dt = parse_datetime("2023-07-21T13:27:45.996+00:00")
+    assert dt_tuple(dt) == (2023, 7, 21, 13, 27, 45, 0)
+
+    dt = parse_datetime("2023-07-21T13:27:45.996+01:00")
+    assert dt_tuple(dt) == (2023, 7, 21, 12, 27, 45, 0)
+
+    dt = parse_datetime("2023-07-21T13:27:45.996-06:00")
+    assert dt_tuple(dt) == (2023, 7, 21, 19, 27, 45, 0)
+
+    # snac2 uses this format
+    dt = parse_datetime("2023-12-29T09:22:15Z")
+    assert dt_tuple(dt) == (2023, 12, 29, 9, 22, 15, 0)
+
+
+def dt_tuple(dt: datetime):
+    assert isinstance(dt, datetime)
+
+    # Parsing should create an aware datetime object
+    offset = dt.utcoffset()
+    assert offset is not None
+
+    return (
+        dt.year,
+        dt.month,
+        dt.day,
+        dt.hour,
+        dt.minute,
+        dt.second,
+        offset.total_seconds()
+    )

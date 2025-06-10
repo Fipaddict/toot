@@ -23,6 +23,18 @@ T = t.TypeVar("T")
 PRIVACY_CHOICES = ["public", "unlisted", "private"]
 VISIBILITY_CHOICES = ["public", "unlisted", "private", "direct"]
 IMAGE_FORMAT_CHOICES = ["block", "iterm", "kitty"]
+NOTIFICATION_TYPE_CHOICES = [
+    "mention",
+    "status",
+    "reblog",
+    "follow",
+    "follow_request",
+    "favourite",
+    "poll",
+    "update",
+    "admin.sign_up",
+    "admin.report",
+]
 TUI_COLORS = {
     "1": 1,
     "16": 16,
@@ -180,4 +192,5 @@ from toot.cli import read  # noqa
 from toot.cli import statuses  # noqa
 from toot.cli import tags  # noqa
 from toot.cli import timelines  # noqa
+from toot.cli import timelines_v2  # noqa
 from toot.cli import tui  # noqa

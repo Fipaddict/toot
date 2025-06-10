@@ -38,6 +38,10 @@ def find_account(app, user, account_name):
     raise ConsoleError("Account not found")
 
 
+def lookup(app, user, acct):
+    return http.get(app, user, "/api/v1/accounts/lookup", {"acct": acct})
+
+
 def _account_action(app, user, account, action) -> Response:
     url = f"/api/v1/accounts/{account}/{action}"
     return http.post(app, user, url)
@@ -419,26 +423,23 @@ def _get_next_url(headers) -> Optional[str]:
 
 
 def _timeline_generator(app, user, path, params=None):
+    if params:
+        path += f"?{urlencode(params)}"
+
     while path:
-        response = http.get(app, user, path, params)
+        response = http.get(app, user, path)
         yield response.json()
         path = _get_next_path(response.headers)
 
 
 def _notification_timeline_generator(app, user, path, params=None):
-    while path:
-        response = http.get(app, user, path, params)
-        notification = response.json()
-        yield [n["status"] for n in notification if n["status"]]
-        path = _get_next_path(response.headers)
+    for batch in _timeline_generator(app, user, path, params):
+        yield [n["status"] for n in batch if n.get("status")]
 
 
 def _conversation_timeline_generator(app, user, path, params=None):
-    while path:
-        response = http.get(app, user, path, params)
-        conversation = response.json()
-        yield [c["last_status"] for c in conversation if c["last_status"]]
-        path = _get_next_path(response.headers)
+    for batch in _timeline_generator(app, user, path, params):
+        yield [c["last_status"] for c in batch if c.get("last_status")]
 
 
 def home_timeline_generator(app, user, limit=20):
@@ -485,28 +486,37 @@ def account_timeline_generator(app, user, account_name: str, replies=False, rebl
     return _timeline_generator(app, user, path, params)
 
 
+def account_timeline_generator_by_id(app, user, account_id: str, replies=False, reblogs=False, limit=20):
+    path = f"/api/v1/accounts/{account_id}/statuses"
+    params = {"limit": limit, "exclude_replies": not replies, "exclude_reblogs": not reblogs}
+    return _timeline_generator(app, user, path, params)
+
+
 def timeline_list_generator(app, user, list_id, limit=20):
     path = f"/api/v1/timelines/list/{list_id}"
     return _timeline_generator(app, user, path, {'limit': limit})
 
 
 def _anon_timeline_generator(url, params=None):
+    if params:
+        url += f"?{urlencode(params)}"
+
     while url:
-        response = http.anon_get(url, params)
+        response = http.anon_get(url)
         yield response.json()
         url = _get_next_url(response.headers)
 
 
 def anon_public_timeline_generator(base_url, local=False, limit=20):
-    query = urlencode({"local": str_bool(local), "limit": limit})
-    url = f"{base_url}/api/v1/timelines/public?{query}"
-    return _anon_timeline_generator(url)
+    params = {"local": str_bool(local), "limit": limit}
+    url = f"{base_url}/api/v1/timelines/public"
+    return _anon_timeline_generator(url, params)
 
 
 def anon_tag_timeline_generator(base_url, hashtag, local=False, limit=20):
-    query = urlencode({"local": str_bool(local), "limit": limit})
-    url = f"{base_url}/api/v1/timelines/tag/{quote(hashtag)}?{query}"
-    return _anon_timeline_generator(url)
+    query = {"local": str_bool(local), "limit": limit}
+    url = f"{base_url}/api/v1/timelines/tag/{quote(hashtag)}"
+    return _anon_timeline_generator(url, query)
 
 
 def get_media(app: App, user: User, id: str):
@@ -549,7 +559,17 @@ def _add_mime_type(file):
     return (filename, file, mime_type)
 
 
-def search(app, user, query, resolve=False, type=None):
+def search(
+    app,
+    user,
+    query,
+    resolve=False,
+    type=None,
+    offset=None,
+    limit=None,
+    min_id=None,
+    max_id=None,
+):
     """
     Perform a search.
     https://docs.joinmastodon.org/methods/search/#v2
@@ -557,7 +577,11 @@ def search(app, user, query, resolve=False, type=None):
     params = drop_empty_values({
         "q": query,
         "resolve": str_bool(resolve),
-        "type": type
+        "type": type,
+        "offset": offset,
+        "limit": limit,
+        "min_id": min_id,
+        "max_id": max_id,
     })
 
     return http.get(app, user, "/api/v2/search", params)
@@ -683,9 +707,9 @@ def verify_credentials(app, user) -> Response:
     return http.get(app, user, '/api/v1/accounts/verify_credentials')
 
 
-def get_notifications(app, user, types=[], exclude_types=[], limit=20):
+def get_notifications(app, user, types=[], exclude_types=[], limit=20) -> Response:
     params = {"types[]": types, "exclude_types[]": exclude_types, "limit": limit}
-    return http.get(app, user, '/api/v1/notifications', params).json()
+    return http.get(app, user, '/api/v1/notifications', params)
 
 
 def clear_notifications(app, user):

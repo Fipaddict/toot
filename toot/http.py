@@ -1,8 +1,10 @@
+from urllib.parse import urlencode, urlparse
+
 from requests import Request, Session
 from requests.exceptions import RequestException
 
 from toot import __version__
-from toot.exceptions import NotFoundError, ApiError
+from toot.exceptions import ApiError, NotFoundError
 from toot.logging import log_request, log_request_exception, log_response
 
 
@@ -65,11 +67,44 @@ def get(app, user, path, params=None, headers=None):
     return process_response(response)
 
 
+def get_paged(app, user, path, params=None, headers=None):
+    if params:
+        path += f"?{urlencode(params)}"
+
+    while path:
+        response = get(app, user, path, headers=headers)
+        yield response
+        path = _next_path(response)
+
+
+def _next_path(response):
+    next_link = response.links.get("next")
+    if next_link:
+        next_url = urlparse(next_link["url"])
+        return "?".join([next_url.path, next_url.query])
+
+
 def anon_get(url, params=None):
     request = Request('GET', url, None, params=params)
     response = send_request(request)
 
     return process_response(response)
+
+
+def anon_get_paged(url, params=None):
+    if params:
+        url += f"?{urlencode(params)}"
+
+    while url:
+        response = anon_get(url)
+        yield response
+        url = _next_url(response)
+
+
+def _next_url(response):
+    next_link = response.links.get("next")
+    if next_link:
+        return next_link["url"]
 
 
 def post(app, user, path, headers=None, files=None, data=None, json=None, allow_redirects=True):
